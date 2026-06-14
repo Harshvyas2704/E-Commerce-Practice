@@ -32,4 +32,19 @@ function validateUserLoginRequest(data) {
   return { error: false, message: "" };
 }
 
-module.exports = { validateUserRegisterRequest, validateUserLoginRequest };
+function validateChangePasswordRequest(oldPassword, newPassword) {
+  if (!oldPassword) {
+    return { error: true, message: "Old password is required" };
+  }
+  if (!newPassword) {
+    return { error: true, message: "New password is required" };
+  }
+
+  return { error: false, message: "" };
+}
+
+module.exports = {
+  validateUserRegisterRequest,
+  validateUserLoginRequest,
+  validateChangePasswordRequest,
+};

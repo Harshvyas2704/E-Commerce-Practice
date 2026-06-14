@@ -4,6 +4,7 @@ const User = require("../models/user.model.js");
 const {
   validateUserRegisterRequest,
   validateUserLoginRequest,
+  validateChangePasswordRequest,
 } = require("../utility/validator.js");
 
 async function registerUserController(req, res) {
@@ -95,6 +96,87 @@ async function loginUserController(req, res) {
   }
 }
 
+async function forgetPasswordController(req, res) {
+  try {
+    /**
+     * TODO
+     * take email from user and send email for resetting password via SMTP.
+     */
+    console.log(req.user);
+  } catch (error) {}
+}
+
+async function getUserProfileController(req, res) {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res
+        .status(401)
+        .json(new ApiError(401, "Error while fetching profile data"));
+    }
+    const { createdAt, updatedAt, ...userResponse } = user;
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          true,
+          200,
+          userResponse,
+          "User profile fetch successfully",
+        ),
+      );
+  } catch (error) {
+    return res
+      .status(500)
+      .json(new ApiError(500, "Server error while getting user profile"));
+  }
+}
+
+async function changePasswordController(req, res) {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const { error, message } = validateChangePasswordRequest(
+      oldPassword,
+      newPassword,
+    );
+    if (error) {
+      return res.status(401).json(new ApiError(401, message));
+    }
+    const findUser = await User.findById(req.user._id);
+    if (!findUser) {
+      return res.status(401).json(new ApiError(401, "User not found"));
+    }
+
+    const isOldPasswordValid = await findUser.comparePassword(oldPassword);
+    if (!isOldPasswordValid) {
+      return res
+        .status(401)
+        .json(new ApiError(401, "Old password in incorrect"));
+    }
+    findUser.password = newPassword;
+    await findUser.save();
+    return res
+      .status(200)
+      .json(new ApiResponse(true, 200, null, "Password change successfully"));
+  } catch (error) {
+    return res
+      .status(500)
+      .json(new ApiError(500, "Server error while changing password"));
+  }
+}
+
+async function logoutController(req, res) {
+  try {
+    const user = req.user;
+    await User.findByIdAndUpdate(user._id, { refreshToken: null });
+    return res
+      .status(200)
+      .json(new ApiResponse(true, 200, null, "Logout successfully"));
+  } catch (error) {
+    return res.status(500).json(new ApiError(500, "Server error while logout"));
+  }
+}
+
 async function isUserExist(email = "", mobileNo = "") {
   try {
     const user = await User.findOne({ $or: [{ email }, { mobileNo }] });
@@ -112,10 +194,15 @@ async function getUserByEmail(email) {
     const user = await User.findOne({ email });
     return user;
   } catch (error) {
-    return res
-      .status(500)
-      .json(new ApiError(401, "Server error while getting user data"));
+    throw new ApiError(500, "Error while getting user by email");
   }
 }
 
-module.exports = { registerUserController, loginUserController };
+module.exports = {
+  registerUserController,
+  loginUserController,
+  forgetPasswordController,
+  getUserProfileController,
+  changePasswordController,
+  logoutController,
+};
